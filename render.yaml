@@ -1,0 +1,34 @@
+# Blueprint для Render: https://render.com/docs/blueprint-spec
+# Рядом с этим файлом в репозитории должны лежать autoreply.py, triggers.py, config.json, requirements.txt.
+services:
+  - type: worker                 # Background Worker: процесс без веб-страницы
+    name: telegram-autoreply
+    runtime: python
+    region: frankfurt            # ближайший к Узбекистану вариант; можно сменить (после создания нельзя)
+    buildCommand: pip install -r requirements.txt
+    startCommand: python autoreply.py
+    autoDeployTrigger: commit    # новый push в GitHub -> автоматический деплой
+    envVars:
+      # Секреты: Render спросит значения при создании, в репозитории их нет.
+      - key: TG_API_ID
+        sync: false
+      - key: TG_API_HASH
+        sync: false
+      - key: TG_SESSION_STRING   # получить: python make_session.py (у себя на компьютере)
+        sync: false
+      # Настройки
+      - key: TZ_NAME
+        value: Asia/Tashkent
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # Расписание «не в сети» (по желанию): раскомментируйте
+      # - key: AWAY_FROM
+      #   value: "23:00"
+      # - key: AWAY_TO
+      #   value: "08:00"
+      - key: STATE_FILE          # файл состояния лежит на диске, чтобы пережить перезапуск
+        value: /data/state.json
+    disk:                        # Persistent Disk (платная функция). Не нужен диск — удалите
+      name: autoreply-data       # этот блок и переменную STATE_FILE выше.
+      mountPath: /data
+      sizeGB: 1

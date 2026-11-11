@@ -1,0 +1,72 @@
+{
+  "default_lang": "ru",
+  "latin_lang": "uz",
+
+  "away_texts": {
+    "ru": "Здравствуйте, {name}! Сейчас я не в сети. Увижу ваше сообщение и отвечу, как только смогу.",
+    "uz": "Assalomu alaykum, {name}! Hozir aloqada emasman. Xabaringizni ko'rishim bilan javob beraman."
+  },
+
+  "triggers": [
+    {
+      "name": "urgent",
+      "cooldown_minutes": 20,
+      "keywords": {
+        "ru": ["срочн", "неотложн", "как можно скорее", "urgent", "asap"],
+        "uz": ["shoshilinch", "zudlik", "tezroq", "tez javob", "шошилинч", "зудлик", "тезрок", "urgent", "asap"]
+      },
+      "replies": {
+        "ru": "Вижу, что вопрос срочный. Отвечу при первой возможности — в первую очередь.",
+        "uz": "Xabaringiz shoshilinch ekanini ko'rdim. Imkon bo'lishi bilan birinchi navbatda javob beraman."
+      }
+    },
+    {
+      "name": "price",
+      "keywords": {
+        "ru": ["цена$", "цены$", "цену$", "ценник", "стоимост", "сколько стоит", "сколько стоят", "сколько это стои", "сколько будет стои", "сколько это будет стои","прайс", "почем"],
+        "uz": ["narx", "qancha turadi", "qancha bo'ladi", "necha pul", "necha so'm", "qancha pul", "bahosi", "baho$",
+               "нарх", "қанча", "канча турад", "неча пул", "неча сўм", "неча сум"]
+      },
+      "replies": {
+        "ru": "По вопросу цены отвечу лично, как только освобожусь. Если нужно срочно — оставьте номер телефона, и я свяжусь с вами.",
+        "uz": "Narx bo'yicha o'zim shaxsan javob beraman, bo'sh bo'lishim bilan yozaman. Shoshilinch bo'lsa, telefon raqamingizni qoldiring — o'zim bog'lanaman."
+      }
+    },
+    {
+      "name": "hours",
+      "keywords": {
+        "ru": ["график", "режим работы", "часы работы", "время работы", "до скольки", "когда работаете", "работаете"],
+        "uz": ["ish vaqti", "ish tartibi", "soat nechada", "nechagacha", "qachon ishlaysiz", "ishlaysizmi",
+               "иш вакти", "иш вақти", "соат нечада"]
+      },
+      "replies": {
+        "ru": "Подробности о графике работы пришлю, как только буду на связи.",
+        "uz": "Ish vaqti haqida batafsil ma'lumotni aloqaga chiqishim bilan yuboraman."
+      }
+    },
+    {
+      "name": "address",
+      "keywords": {
+        "ru": ["адрес", "где находитесь", "где вы находитесь", "как добраться", "как проехать", "локаци"],
+        "uz": ["manzil", "qayerda", "qaerda", "qayerdasiz", "qanday borsam", "lokatsiya",
+               "манзил", "қаерда", "каерда", "локация"]
+      },
+      "replies": {
+        "ru": "Адрес и как добраться — пришлю, как только буду на связи.",
+        "uz": "Manzil va qanday borish haqida aloqaga chiqishim bilan yozaman."
+      }
+    },
+    {
+      "name": "contact",
+      "keywords": {
+        "ru": ["телефон", "позвони", "перезвони", "созвонимся", "созвон", "связаться", "свяжитесь"],
+        "uz": ["telefon", "qo'ng'iroq", "qongiroq", "bog'lan", "boglan", "raqamingiz",
+               "телефон", "қўнғироқ", "боғлан"]
+      },
+      "replies": {
+        "ru": "Оставьте, пожалуйста, ваш номер телефона — я свяжусь с вами, как только освобожусь.",
+        "uz": "Iltimos, telefon raqamingizni qoldiring — bo'sh bo'lishim bilan o'zim bog'lanaman."
+      }
+    }
+  ]
+}
