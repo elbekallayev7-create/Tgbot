@@ -1,2 +1,3 @@
-telethon>=1.36
+# Внешние пакеты не нужны: бот работает на стандартной библиотеке Python 3.9+.
+# (tzdata нужен только в Windows для часовых поясов)
 tzdata; platform_system == "Windows"
