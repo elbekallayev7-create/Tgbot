@@ -2,116 +2,14 @@
 
 import asyncio
 import json
-import os
-import tempfile
-import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
-
-os.environ["STATE_FILE"] = str(Path(tempfile.mkdtemp()) / "state.json")
-os.environ["REPLY_DELAY_MIN"] = "0"
-os.environ["REPLY_DELAY_MAX"] = "0"
-os.environ["COOLDOWN_HOURS"] = "6"
-os.environ["HANDOFF_MINUTES"] = "30"
-for name in ("AWAY_FROM", "AWAY_TO", "IDLE_MINUTES", "OWNER_ID", "MODE"):
-    os.environ.pop(name, None)
 
 import pytest
 
 import secretary as ar
 from botapi import BotAPI, BotAPIError
+from conftest import CONN, OWNER, biz, dm, run
 from triggers import Config
-
-CONFIG_FILE = Path(__file__).with_name("config.json")
-OWNER = {"id": 1, "first_name": "Owner", "is_bot": False}
-CONN = {"id": "c1", "user": OWNER, "user_chat_id": 1, "date": 0, "can_reply": True, "is_enabled": True}
-
-
-# ------------------------------------------------------------------ имитатор Telegram
-
-class FakeTelegram:
-    def __init__(self):
-        self.calls, self.batches, self.connections, self.fail = [], [], {}, {}
-        outer = self
-
-        class Handler(BaseHTTPRequestHandler):
-            def do_POST(self):
-                params = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-                method = self.path.rsplit("/", 1)[-1]
-                outer.calls.append((method, params))
-                error = outer.fail.get((method, params.get("chat_id"))) or outer.fail.get((method, None))
-                if error:
-                    status, payload = error["error_code"], {"ok": False, **error}
-                elif method == "getUpdates":
-                    batch = outer.batches.pop(0) if outer.batches else None
-                    if batch is None:
-                        time.sleep(0.05)
-                    status, payload = 200, {"ok": True, "result": batch or []}
-                elif method == "getMe":
-                    status, payload = 200, {"ok": True, "result": {"id": 9, "is_bot": True, "username": "sekretar_bot",
-                                                                   "can_connect_to_business": True}}
-                elif method == "getBusinessConnection":
-                    conn = outer.connections.get(params["business_connection_id"])
-                    status, payload = (200, {"ok": True, "result": conn}) if conn else (
-                        400, {"ok": False, "error_code": 400, "description": "Bad Request: no connection"})
-                else:
-                    status, payload = 200, {"ok": True, "result": {"message_id": 1} if method == "sendMessage" else True}
-                body = json.dumps(payload).encode()
-                self.send_response(status)
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-
-            def log_message(self, *args):
-                pass
-
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self.server.daemon_threads = True
-        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
-        threading.Thread(target=lambda: self.server.serve_forever(poll_interval=0.01), daemon=True).start()
-
-    def sent(self, to=None):
-        """Параметры всех sendMessage (можно отфильтровать по chat_id)."""
-        return [p for m, p in self.calls if m == "sendMessage" and (to is None or p["chat_id"] == to)]
-
-    def stop(self):
-        self.server.shutdown()
-        self.server.server_close()
-
-
-@pytest.fixture(autouse=True)
-def tg():
-    fake = FakeTelegram()
-    ar.api = BotAPI("TOKEN", base_url=fake.url)
-    ar.state = ar.default_state()
-    ar.cfg = Config.load(CONFIG_FILE)
-    ar.webhook_secret = None
-    ar.IDLE_MINUTES = 0
-    ar.OWNER_ID = 0
-    if ar.STATE_FILE.exists():
-        ar.STATE_FILE.unlink()
-    ar.remember_connection(CONN)          # подключение уже известно
-    yield fake
-    fake.stop()
-
-
-def biz(text, uid=100, name="Ali", username=None, conn="c1", sender_id=None, **extra):
-    sender = {"id": sender_id or uid, "first_name": name, "is_bot": False}
-    if username:
-        sender["username"] = username
-    return {"update_id": 1, "business_message": {
-        "business_connection_id": conn, "message_id": 1, "date": 0,
-        "chat": {"id": uid, "type": "private"}, "from": sender, "text": text, **extra}}
-
-
-def dm(text, sender_id=1, chat_type="private"):
-    return {"update_id": 2, "message": {"message_id": 1, "date": 0, "chat": {"id": sender_id, "type": chat_type},
-                                        "from": {"id": sender_id, "first_name": "X", "is_bot": False}, "text": text}}
-
-
-def run(update):
-    asyncio.run(ar.process_update(update))
 
 
 # ------------------------------------------------------------------ ответы клиентам
@@ -301,20 +199,24 @@ def test_owner_commands(tg):
     assert ar.state["texts"]["uz"] == "Hozir yo'qman"
     assert "config.json" in command(tg, "/text uz reset") and "uz" not in ar.state["texts"]
     assert "Формат" in command(tg, "/text en x")
-    assert "выключены" in command(tg, "/triggers off") and ar.state["triggers"] is False
+    assert "Триггеры: выключено" in command(tg, "/triggers off") and ar.state["triggers"] is False
     assert "Пересылка" in command(tg, "/notify off") and ar.state["notify"] is False
+    assert "не настроена" in command(tg, "/scan on")             # ключа VirusTotal нет
     assert "Молчу" in command(tg, "/ignore 555") and ar.state["ignore"] == ["555"]
     assert "Формат" in command(tg, "/ignore abc")
     assert "Снова" in command(tg, "/unignore 555") and ar.state["ignore"] == []
     assert "сброшены" in command(tg, "/reset")
     assert "перечитан" in command(tg, "/reload")
     assert "Вручную" in command(tg, "/status")
-    assert "Команды" in command(tg, "/start") and "Вручную" in tg.sent()[-1]["text"]
+    assert "Команды" in command(tg, "/help")
+    assert "Меню секретаря" in command(tg, "/start") and "Меню секретаря" in command(tg, "/menu")
+    assert "Меню секретаря" in command(tg, "привет")             # любое сообщение открывает меню
 
 
-def test_commands_from_strangers_are_ignored(tg):
-    assert command(tg, "/on", sender_id=777) is None and ar.state["away"] is False
-    assert "бот-секретарь" in command(tg, "/start", sender_id=777)
+def test_commands_from_strangers_are_not_executed(tg):
+    # посторонний — это клиент прямого режима: команды не выполняются, бот отвечает как секретарь
+    assert command(tg, "/on", sender_id=777).startswith("Assalomu alaykum, X!")  # латиница → узбекский
+    assert ar.state["away"] is False
 
 
 def test_owner_id_env_allows_commands_before_connection(tg):
